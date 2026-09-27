@@ -1,2 +1,2 @@
 DATABASE = 'database.db'
-TOKEN = '8947360200:AAEJk5Fh9pUzLgydi49HyB5vB7ib3WFR0ws'
+TOKEN = ''
