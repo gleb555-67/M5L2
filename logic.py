@@ -25,7 +25,7 @@ class DB_Map():
         conn = sqlite3.connect(self.database)
         with conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT id FROM cities WHERE city=?", (city_name,))
+            cursor.execute("SELECT id FROM cities WHERE LOWER(city)=LOWER(?)", (city_name,))
             city_data = cursor.fetchone()
             if city_data:
                 city_id = city_data[0]
@@ -52,9 +52,59 @@ class DB_Map():
             cursor = conn.cursor()
             cursor.execute('''SELECT lat, lng
                             FROM cities  
-                            WHERE city = ?''', (city_name,))
+                            WHERE LOWER(city) = LOWER(?)''', (city_name,))
             coordinates = cursor.fetchone()
             return coordinates
+
+    # ---------- НОВЫЕ МЕТОДЫ ----------
+
+    def get_cities_by_country(self, country, limit=None):
+        """Все города страны, отсортированные по населению (убыв.)."""
+        conn = sqlite3.connect(self.database)
+        with conn:
+            cursor = conn.cursor()
+            sql = '''SELECT city FROM cities
+                     WHERE LOWER(country) = LOWER(?)
+                     ORDER BY population DESC'''
+            params = [country]
+            if limit is not None:
+                sql += ' LIMIT ?'
+                params.append(limit)
+            cursor.execute(sql, params)
+            return [row[0] for row in cursor.fetchall()]
+
+    def get_top_cities_by_population(self, limit=10):
+        """Топ-N городов мира по населению (убыв.)."""
+        conn = sqlite3.connect(self.database)
+        with conn:
+            cursor = conn.cursor()
+            cursor.execute('''SELECT city FROM cities
+                              ORDER BY population DESC
+                              LIMIT ?''', (limit,))
+            return [row[0] for row in cursor.fetchall()]
+
+    def get_top_cities_by_country(self, country, limit=10):
+        """Топ-N городов конкретной страны по населению (убыв.)."""
+        return self.get_cities_by_country(country, limit=limit)
+
+    def get_countries(self):
+        """Список всех стран в БД (для подсказки пользователю)."""
+        conn = sqlite3.connect(self.database)
+        with conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT DISTINCT country FROM cities ORDER BY country')
+            return [row[0] for row in cursor.fetchall()]
+
+    def get_city_stats(self, city_name):
+        """Возвращает страну и население города (для подписи к карте)."""
+        conn = sqlite3.connect(self.database)
+        with conn:
+            cursor = conn.cursor()
+            cursor.execute('''SELECT country, population FROM cities
+                              WHERE LOWER(city) = LOWER(?)''', (city_name,))
+            return cursor.fetchone()
+
+    # ---------- ОТРИСОВКА ----------
 
     def create_graph(self, path, cities):
         fig = plt.figure(figsize=(12, 6))
